@@ -435,11 +435,10 @@ def page_not_found(error):
 
 
 # -----------------------------------------------------------------------------
-# Custom Flask CLI Command: flask seed
+# Fungsi & Custom Flask CLI Command: seed
 # -----------------------------------------------------------------------------
-@app.cli.command("seed")
-def seed():
-    """Inisialisasi basis data dan memasukkan 5 data mahasiswa dummy."""
+def jalankan_seed():
+    """Eksekusi reset tabel dan pengisian 5 data mahasiswa dummy."""
     # Reset schema basis data
     db.drop_all()
     db.create_all()
@@ -506,9 +505,24 @@ def seed():
     print("Basis data berhasil direset dan 5 data mahasiswa dummy telah dimasukkan!")
 
 
+@app.cli.command("seed")
+def seed():
+    """Inisialisasi basis data dan memasukkan 5 data mahasiswa dummy."""
+    jalankan_seed()
+
+
 # -----------------------------------------------------------------------------
 # Menjalankan Server Aplikasi
 # debug=True HANYA jika script dieksekusi langsung
+# Mendukung eksekusi: python app.py seed
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    import sys
+
+    # Jika dijalankan dengan argumen 'seed': python app.py seed
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "seed":
+        with app.app_context():
+            jalankan_seed()
+    else:
+        # Jalankan server pengembangan Flask
+        app.run(debug=True)
