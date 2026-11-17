@@ -15,13 +15,40 @@
             <span class="badge bg-primary ms-2">{{ mahasiswa | length }} Mahasiswa</span>
         </p>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         <a href="{{ url_for('tambah_mahasiswa') }}" class="btn btn-primary">
             <i class="bi bi-person-plus-fill me-1"></i> Tambah Mahasiswa
         </a>
         <a href="{{ url_for('cari') }}" class="btn btn-outline-secondary">
             <i class="bi bi-search me-1"></i> Form Pencarian
         </a>
+        <!-- Dropdown Export CSV -->
+        <div class="dropdown">
+            <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li>
+                    <a class="dropdown-item" href="{{ url_for('export_mahasiswa_csv', prodi=prodi_aktif) if prodi_aktif else url_for('export_mahasiswa_csv') }}">
+                        <i class="bi bi-people me-2 text-primary"></i>
+                        Semua Mahasiswa{% if prodi_aktif %} ({{ prodi_aktif }}){% endif %}
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{{ url_for('export_mahasiswa_csv', prodi=prodi_aktif, status='berisiko') if prodi_aktif else url_for('export_mahasiswa_csv', status='berisiko') }}">
+                        <i class="bi bi-exclamation-circle me-2 text-danger"></i>
+                        Hanya Berisiko{% if prodi_aktif %} ({{ prodi_aktif }}){% endif %}
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item" href="{{ url_for('export_mahasiswa_csv') }}">
+                        <i class="bi bi-download me-2 text-secondary"></i>
+                        Semua Data (Tanpa Filter)
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
 </div>
 

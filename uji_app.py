@@ -323,6 +323,79 @@ class TestSIPeringatanDini(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
 
 
+    # ---------------------------------------------------------------------------
+    # Test F-05: Export CSV
+    # ---------------------------------------------------------------------------
+    def test_export_csv_semua_mahasiswa(self):
+        """F-05: Verifikasi rute /mahasiswa/export menghasilkan file CSV yang valid."""
+        resp = self.client.get("/mahasiswa/export")
+
+        # Pastikan status 200 dan Content-Type CSV
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("text/csv", resp.content_type)
+
+        # Pastikan header Content-Disposition mengandung attachment & nama file .csv
+        disposition = resp.headers.get("Content-Disposition", "")
+        self.assertIn("attachment", disposition)
+        self.assertIn(".csv", disposition)
+
+        # Decode konten CSV
+        konten = resp.data.decode("utf-8")
+        baris = konten.strip().splitlines()
+
+        # Baris pertama harus header
+        self.assertEqual(baris[0], "NIM,Nama,Program Studi,IPK,Kehadiran (%),Predikat,Status Peringatan,Email,Jumlah Catatan")
+
+        # Harus ada 2 baris data (Andi + Budi) + 1 header = 3 baris total
+        self.assertEqual(len(baris), 3)
+
+        # Pastikan NIM mahasiswa ada di CSV
+        self.assertIn("A11.2023.00001", konten)
+        self.assertIn("A11.2023.00002", konten)
+
+    def test_export_csv_filter_berisiko(self):
+        """F-05: Verifikasi filter ?status=berisiko hanya mengekspor mahasiswa berisiko."""
+        resp = self.client.get("/mahasiswa/export?status=berisiko")
+        self.assertEqual(resp.status_code, 200)
+
+        konten = resp.data.decode("utf-8")
+
+        # Hanya Budi yang berisiko (IPK 2.45 < 2.75 dan kehadiran 68 < 75)
+        self.assertIn("A11.2023.00002", konten)   # Budi ada
+        self.assertNotIn("A11.2023.00001", konten)  # Andi tidak ada (aman)
+
+        # Kolom status harus "BERISIKO"
+        self.assertIn("BERISIKO", konten)
+
+    def test_export_csv_filter_prodi(self):
+        """F-05: Verifikasi filter ?prodi=SI hanya mengekspor mahasiswa prodi SI."""
+        resp = self.client.get("/mahasiswa/export?prodi=SI")
+        self.assertEqual(resp.status_code, 200)
+
+        konten = resp.data.decode("utf-8")
+
+        # Hanya Andi (prodi SI) yang masuk
+        self.assertIn("A11.2023.00001", konten)
+        self.assertNotIn("A11.2023.00002", konten)  # Budi prodi TI
+
+    def test_export_csv_nama_file_dinamis(self):
+        """F-05: Verifikasi nama file CSV mengandung tanggal dan filter yang aktif."""
+        # Tanpa filter
+        resp = self.client.get("/mahasiswa/export")
+        disposition = resp.headers.get("Content-Disposition", "")
+        self.assertIn("mahasiswa_", disposition)
+
+        # Filter berisiko → nama file harus mengandung '_berisiko'
+        resp2 = self.client.get("/mahasiswa/export?status=berisiko")
+        disposition2 = resp2.headers.get("Content-Disposition", "")
+        self.assertIn("berisiko", disposition2)
+
+        # Filter prodi SI → nama file harus mengandung '_SI'
+        resp3 = self.client.get("/mahasiswa/export?prodi=SI")
+        disposition3 = resp3.headers.get("Content-Disposition", "")
+        self.assertIn("SI", disposition3)
+
+
 # -----------------------------------------------------------------------------
 # Eksekusi Test Runner
 # -----------------------------------------------------------------------------
