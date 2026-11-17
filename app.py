@@ -4,13 +4,17 @@ Dibangun menggunakan Python 3.11+, Flask, Jinja2, Flask-SQLAlchemy, dan Flask-WT
 Menggunakan basis data SQLite dengan gaya query SQLAlchemy 2.x serta validasi sisi server.
 """
 
+import csv
+import io
 import os
+from datetime import datetime, timezone
 from typing import Any
 from flask import (
     Flask,
     abort,
     flash,
     jsonify,
+    make_response,
     redirect,
     render_template,
     request,
@@ -258,7 +262,58 @@ def cari():
     return render_template("cari.html", daftar_prodi=daftar_prodi)
 
 
-# 7. Rute REST API JSON (/api/mahasiswa/<nim>): Menggunakan SQLAlchemy 2.x
+# 7. Rute Export CSV (/mahasiswa/export): GET dengan query string ?prodi= & ?status=
+@app.route("/mahasiswa/export")
+def export_mahasiswa_csv():
+    """Rute export data mahasiswa ke file CSV.
+
+    Query string opsional:
+      - ?prodi=SI        -> filter berdasarkan program studi
+      - ?status=berisiko -> hanya mahasiswa berisiko
+    """
+    prodi_filter = request.args.get("prodi", "").strip()
+    status_filter = request.args.get("status", "").strip().lower()
+
+    stmt = db.select(Mahasiswa)
+    if prodi_filter:
+        stmt = stmt.filter(Mahasiswa.prodi.ilike(f"%{prodi_filter}%"))
+    stmt = stmt.order_by(Mahasiswa.nama)
+    semua = db.session.execute(stmt).scalars().all()
+
+    if status_filter == "berisiko":
+        semua = [m for m in semua if m.is_berisiko]
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "NIM", "Nama", "Program Studi", "IPK", "Kehadiran (%)",
+        "Predikat", "Status Peringatan", "Email", "Jumlah Catatan"
+    ])
+    for m in semua:
+        writer.writerow([
+            m.nim,
+            m.nama,
+            m.prodi,
+            f"{m.ipk:.2f}",
+            m.kehadiran,
+            filter_predikat(m.ipk),
+            "BERISIKO" if m.is_berisiko else "Aman",
+            m.email or "",
+            len(m.catatan),
+        ])
+
+    tanggal = datetime.now(timezone.utc).strftime("%Y%m%d")
+    bagian_prodi = f"_{prodi_filter.upper()}" if prodi_filter else ""
+    bagian_status = "_berisiko" if status_filter == "berisiko" else ""
+    nama_file = f"mahasiswa{bagian_prodi}{bagian_status}_{tanggal}.csv"
+
+    response = make_response(output.getvalue())
+    response.headers["Content-Type"] = "text/csv; charset=utf-8"
+    response.headers["Content-Disposition"] = f"attachment; filename={nama_file}"
+    return response
+
+
+# 8. Rute REST API JSON (/api/mahasiswa/<nim>): Menggunakan SQLAlchemy 2.x
 @app.route("/api/mahasiswa/<nim>")
 def api_mahasiswa(nim: str):
     """Rute API RESTful: Mengembalikan data mahasiswa dan relasi catatan dalam format JSON."""
