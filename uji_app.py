@@ -239,6 +239,89 @@ class TestSIPeringatanDini(unittest.TestCase):
         catatan_terhapus = db.session.execute(stmt_catatan).scalars().all()
         self.assertEqual(len(catatan_terhapus), 0)
 
+    # -------------------------------------------------------------------------
+    # 6. Pengujian Fitur Edit / Pembaruan Data Mahasiswa (/mahasiswa/<nim>/edit)
+    # -------------------------------------------------------------------------
+    def test_rute_edit_mahasiswa_tampil_form_200(self):
+        """Memastikan rute GET /mahasiswa/<nim>/edit menampilkan form terisi dan status HTTP 200."""
+        response = self.client.get("/mahasiswa/A11.2023.00001/edit")
+        self.assertEqual(response.status_code, 200)
+
+        konten_html = response.get_data(as_text=True)
+        self.assertIn("Edit Data Mahasiswa", konten_html)
+        self.assertIn("Andi Pratama", konten_html)
+        self.assertIn("A11.2023.00001", konten_html)
+
+    def test_rute_edit_mahasiswa_sukses_302(self):
+        """Memastikan pembaruan data valid merespons HTTP 302, tersimpan di DB, dan status risiko terbarui."""
+        data_update = {
+            "nim": "A11.2023.00002",
+            "nama": "Budi Santoso Updated",
+            "prodi": "TI",
+            "ipk": "3.25",       # Nilai ditingkatkan dari 2.45
+            "kehadiran": "88",   # Presensi ditingkatkan dari 68%
+            "email": "budi_baru@mhs.kampus.ac.id",
+        }
+
+        response = self.client.post("/mahasiswa/A11.2023.00002/edit", data=data_update)
+
+        # 1. Pastikan redirect ke halaman detail mahasiswa
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/mahasiswa/A11.2023.00002", response.headers.get("Location", ""))
+
+        # 2. Verifikasi perubahan di database via ORM
+        stmt = db.select(Mahasiswa).filter_by(nim="A11.2023.00002")
+        mhs = db.session.execute(stmt).scalar_one_or_none()
+
+        self.assertIsNotNone(mhs)
+        self.assertEqual(mhs.nama, "Budi Santoso Updated")
+        self.assertAlmostEqual(mhs.ipk, 3.25)
+        self.assertEqual(mhs.kehadiran, 88)
+        self.assertEqual(mhs.email, "budi_baru@mhs.kampus.ac.id")
+
+        # 3. Verifikasi evaluasi peringatan dini berubah menjadi aman (tidak berisiko)
+        self.assertFalse(mhs.is_berisiko, "Mahasiswa yang telah memperbaiki IPK dan presensi harus keluar dari kategori risiko")
+
+    def test_rute_edit_mahasiswa_tetap_nim_sama(self):
+        """Memastikan mode edit dengan NIM yang sama tidak terblokir oleh validator keunikan NIM."""
+        data_sama = {
+            "nim": "A11.2023.00001",  # NIM tetap sama
+            "nama": "Andi Pratama Edit",
+            "prodi": "SI",
+            "ipk": "3.80",
+            "kehadiran": "94",
+            "email": "andi@mhs.kampus.ac.id",
+        }
+
+        response = self.client.post("/mahasiswa/A11.2023.00001/edit", data=data_sama)
+        self.assertEqual(response.status_code, 302)
+
+        stmt = db.select(Mahasiswa).filter_by(nim="A11.2023.00001")
+        mhs = db.session.execute(stmt).scalar_one_or_none()
+        self.assertEqual(mhs.nama, "Andi Pratama Edit")
+
+    def test_rute_edit_mahasiswa_nim_duplikat_422(self):
+        """Memastikan mode edit menolak jika NIM diubah menjadi NIM milik mahasiswa lain (HTTP 422)."""
+        data_bentrok = {
+            "nim": "A11.2023.00001",  # Mencoba memakai NIM milik Andi Pratama
+            "nama": "Budi Santoso",
+            "prodi": "TI",
+            "ipk": "2.45",
+            "kehadiran": "68",
+            "email": "budi@mhs.kampus.ac.id",
+        }
+
+        response = self.client.post("/mahasiswa/A11.2023.00002/edit", data=data_bentrok)
+        self.assertEqual(response.status_code, 422)
+
+        konten_html = response.get_data(as_text=True)
+        self.assertIn("sudah terdaftar dalam sistem", konten_html)
+
+    def test_rute_edit_mahasiswa_404(self):
+        """Memastikan akses edit mahasiswa dengan NIM tidak terdaftar menghasilkan HTTP 404."""
+        response = self.client.get("/mahasiswa/A11.2099.99999/edit")
+        self.assertEqual(response.status_code, 404)
+
 
 # -----------------------------------------------------------------------------
 # Eksekusi Test Runner
