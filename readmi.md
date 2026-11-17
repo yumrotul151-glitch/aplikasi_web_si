@@ -31,7 +31,6 @@ c:/aplikasi_web_si/
 ├── uji_app.py                 # Skrip pengujian otomatis unit & integrasi terisolasi
 ├── requirements.txt           # Daftar dependensi pustaka Python
 ├── README.md                  # Dokumentasi teknis & rekapitulasi proyek
-├── readmi.md                  # Rekapitulasi & panduan penerapan (alias)
 ├── siews.db                   # Berkas basis data SQLite lokal (dibuat via CLI flask seed)
 │
 └── templates/                 # Berkas antarmuka Jinja2
@@ -40,7 +39,8 @@ c:/aplikasi_web_si/
     ├── index.html             # Dashboard metrik & tabel mahasiswa berisiko
     ├── mahasiswa.html         # Daftar seluruh mahasiswa & navigasi filter prodi
     ├── tambah.html            # Formulir penambahan mahasiswa baru
-    ├── detail.html            # Detail profil, riwayat catatan, form tambah catatan, tombol hapus
+    ├── edit.html              # Formulir pengeditan profil & metrik akademik mahasiswa
+    ├── detail.html            # Detail profil, riwayat catatan, form tambah catatan, tombol aksi
     ├── cari.html              # Formulir pencarian dengan pola Post/Redirect/Get (PRG)
     └── 404.html               # Halaman kustom HTTP 404 Not Found
 ```
@@ -117,6 +117,8 @@ Pada tahap ini, *list of dictionaries* digantikan dengan basis data relasional S
 | `POST` | `/mahasiswa/tambah` | Memproses validasi dan penyimpanan mahasiswa baru | HTTP 302 (Redirect) jika valid / HTTP 422 jika gagal |
 | `GET` | `/mahasiswa/<nim>` | Rincian profil mahasiswa, riwayat catatan, & form catatan | Render `detail.html` (HTTP 200 / 404 jika tidak ada) |
 | `POST` | `/mahasiswa/<nim>` | Menyimpan catatan bimbingan/konseling baru | HTTP 302 (Redirect PRG) jika valid / HTTP 422 jika gagal |
+| `GET` | `/mahasiswa/<nim>/edit` | Menampilkan formulir edit profil & nilai mahasiswa terisi | Render `edit.html` (HTTP 200 / 404 jika tidak ada) |
+| `POST` | `/mahasiswa/<nim>/edit` | Memvalidasi dan menyimpan pembaruan data mahasiswa | HTTP 302 (Redirect ke detail) jika valid / HTTP 422 jika gagal |
 | `POST` | `/mahasiswa/<nim>/hapus` | Menghapus data mahasiswa beserta riwayat catatannya | HTTP 302 (Redirect ke `/mahasiswa`) |
 | `GET` | `/cari` | Menampilkan formulir pencarian mahasiswa / filter | Render `cari.html` (HTTP 200) |
 | `POST` | `/cari` | Memproses input pencarian (NIM / Prodi) | HTTP 302 (Redirect PRG ke `/mahasiswa/<nim>` atau `/mahasiswa?prodi=`) |
@@ -170,7 +172,7 @@ flask seed
 ```text
 Basis data berhasil direset dan 5 data mahasiswa dummy telah dimasukkan!
 ```
-Perintah ini akan secara otomatis membuat berkas basis data `siews.db`.
+Perintah ini akan secara otomatis membuat berkas basis data [siews.db](file:///c:/aplikasi_web_si/siews.db).
 
 ### 3. Menjalankan Server Pengembangan
 Jalankan aplikasi Flask:
@@ -213,6 +215,11 @@ python -m unittest uji_app.py -v
 7. `test_tambah_mahasiswa_nim_duplikat` : Verifikasi bahwa validator khusus `validate_nim` menolak NIM yang telah ada di database (status **422**).
 8. `test_relasi_tambah_catatan_mahasiswa` : Verifikasi penambahan catatan konseling dan keterhubungannya dengan mahasiswa lewat relasi dua arah ORM (`back_populates`).
 9. `test_rute_hapus_mahasiswa_cascade` : Verifikasi operasi penghapusan data mahasiswa beserta seluruh catatan terkaitnya secara otomatis (*cascade delete*).
+10. `test_rute_edit_mahasiswa_tampil_form_200` : Verifikasi form edit menampilkan data awal mahasiswa secara benar (HTTP 200).
+11. `test_rute_edit_mahasiswa_sukses_302` : Verifikasi pembaruan data mahasiswa (IPK, presensi, dll.) tersimpan via ORM, kalkulasi risiko otomatis disesuaikan, dan redirect ke rute detail (HTTP 302).
+12. `test_rute_edit_mahasiswa_tetap_nim_sama` : Verifikasi mode edit dengan NIM yang sama tidak terblokir oleh validator keunikan NIM berkat `current_id`.
+13. `test_rute_edit_mahasiswa_nim_duplikat_422` : Verifikasi jika NIM diubah menyerupai NIM mahasiswa lain, sistem menolak dengan HTTP 422.
+14. `test_rute_edit_mahasiswa_404` : Verifikasi penanganan error 404 ketika mengakses rute edit untuk mahasiswa yang tidak ada.
 
 ---
 

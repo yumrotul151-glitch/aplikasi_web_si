@@ -127,6 +127,9 @@
                             <a href="{{ url_for('detail_mahasiswa', nim=m.nim) }}" class="btn btn-primary" title="Detail & Catatan">
                                 <i class="bi bi-eye"></i> Detail
                             </a>
+                            <a href="{{ url_for('edit_mahasiswa', nim=m.nim) }}" class="btn btn-warning" title="Edit Mahasiswa">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
                             <a href="{{ url_for('api_mahasiswa', nim=m.nim) }}" target="_blank" class="btn btn-outline-secondary" title="Response JSON API">
                                 <i class="bi bi-code-slash"></i>
                             </a>

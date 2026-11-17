@@ -219,7 +219,47 @@ def detail_mahasiswa(nim: str):
     )
 
 
-# 5. Rute Hapus Mahasiswa (/mahasiswa/<nim>/hapus): Hanya menerima POST
+# 5. Rute Edit Mahasiswa (/mahasiswa/<nim>/edit): GET & POST dengan MahasiswaForm
+@app.route("/mahasiswa/<nim>/edit", methods=["GET", "POST"])
+def edit_mahasiswa(nim: str):
+    """Rute pembaruan data mahasiswa menggunakan MahasiswaForm.
+
+    Mengisi form dengan instance mahasiswa saat ini dan current_id agar validasi keunikan NIM
+    tidak memblokir record miliknya sendiri. Jika validasi gagal pada POST, merespons dengan HTTP 422.
+    Jika sukses, simpan perubahan dan redirect ke halaman detail mahasiswa (Pola PRG).
+    """
+    stmt = db.select(Mahasiswa).filter_by(nim=nim)
+    mhs = db.session.execute(stmt).scalar_one_or_none()
+
+    if not mhs:
+        abort(404, description=f"Mahasiswa dengan NIM '{nim}' tidak ditemukan.")
+
+    form = MahasiswaForm(obj=mhs, current_id=mhs.id)
+
+    if request.method == "POST":
+        if form.validate_on_submit():
+            mhs.nim = form.nim.data.strip().upper()
+            mhs.nama = form.nama.data.strip()
+            mhs.prodi = form.prodi.data
+            mhs.ipk = float(form.ipk.data)
+            mhs.kehadiran = int(form.kehadiran.data)
+            mhs.email = form.email.data.strip() if form.email.data else None
+
+            db.session.commit()
+            flash(
+                f"Data mahasiswa {mhs.nama} ({mhs.nim}) berhasil diperbarui!",
+                "success",
+            )
+            return redirect(url_for("detail_mahasiswa", nim=mhs.nim))
+
+        # Jika validasi gagal saat submit POST
+        return render_template("edit.html", form=form, mahasiswa=mhs), 422
+
+    # Request GET: Tampilkan formulir terisi
+    return render_template("edit.html", form=form, mahasiswa=mhs)
+
+
+# 6. Rute Hapus Mahasiswa (/mahasiswa/<nim>/hapus): Hanya menerima POST
 @app.route("/mahasiswa/<nim>/hapus", methods=["POST"])
 def hapus_mahasiswa(nim: str):
     """Rute penghapusan mahasiswa beserta catatannya (Hanya menerima metode POST)."""
@@ -239,7 +279,7 @@ def hapus_mahasiswa(nim: str):
     return redirect(url_for("daftar_mahasiswa"))
 
 
-# 6. Rute Form Pencarian (/cari): Metode POST merespons dengan Redirect (PRG Pattern)
+# 7. Rute Form Pencarian (/cari): Metode POST merespons dengan Redirect (PRG Pattern)
 @app.route("/cari", methods=["GET", "POST"])
 def cari():
     """Rute pencarian menerapkan pola Post/Redirect/Get (PRG)."""

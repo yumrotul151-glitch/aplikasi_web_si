@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_makro.html" import render_field %}
+
+{% block judul %}Edit Data Mahasiswa - {{ mahasiswa.nama | title }}{% endblock %}
+
+{% block isi %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Navigasi Kembali -->
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('detail_mahasiswa', nim=mahasiswa.nim) }}" class="btn btn-sm btn-link text-decoration-none ps-0">
+                <i class="bi bi-arrow-left me-1"></i> Kembali ke Detail Mahasiswa
+            </a>
+            <span class="badge bg-secondary font-monospace">NIM Awal: {{ mahasiswa.nim }}</span>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-warning text-dark py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0 fw-bold">
+                            <i class="bi bi-pencil-square me-2"></i>Edit Data Mahasiswa
+                        </h4>
+                        <p class="mb-0 small text-dark-50">Perbarui profil atau metrik akademik untuk evaluasi peringatan dini.</p>
+                    </div>
+                    <span class="badge bg-dark text-white px-3 py-2">
+                        Status Saat Ini: {% if mahasiswa.is_berisiko %}Perlu Perhatian{% else %}Aman{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <form action="{{ url_for('edit_mahasiswa', nim=mahasiswa.nim) }}" method="POST" novalidate>
+                    <!-- Token Perlindungan CSRF Flask-WTF -->
+                    {{ form.hidden_tag() }}
+
+                    <!-- Input Fields dengan Makro render_field -->
+                    {{ render_field(form.nim, placeholder="Contoh: A11.2023.00001") }}
+                    {{ render_field(form.nama, placeholder="Nama lengkap sesuai KTM/KTP") }}
+                    {{ render_field(form.prodi) }}
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ render_field(form.ipk, step="0.01", placeholder="0.00 - 4.00") }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ render_field(form.kehadiran, placeholder="0 - 100") }}
+                        </div>
+                    </div>
+
+                    {{ render_field(form.email, placeholder="nama@kampus.ac.id (opsional)") }}
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{{ url_for('detail_mahasiswa', nim=mahasiswa.nim) }}" class="btn btn-outline-secondary">
+                            Batal
+                        </a>
+                        <button type="submit" class="btn btn-warning px-4 fw-semibold text-dark">
+                            <i class="bi bi-check-circle-fill me-1"></i> Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
